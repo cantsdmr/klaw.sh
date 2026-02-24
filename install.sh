@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Config
-GITHUB_REPO="klawsh/klaw.sh"
+GITHUB_REPO="cantsdmr/klaw.sh"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="klaw"
 
@@ -75,9 +75,6 @@ main() {
 
     DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/${FILENAME}"
 
-    # Alternative: direct from klaw.sh
-    ALT_URL="https://klaw.sh/releases/${VERSION}/${FILENAME}"
-
     echo "${YELLOW}Downloading:${NC} $FILENAME"
 
     # Create temp directory
@@ -87,8 +84,6 @@ main() {
     # Try GitHub first, then klaw.sh
     if curl -fsSL "$DOWNLOAD_URL" -o "$TMP_FILE" 2>/dev/null; then
         echo "${GREEN}Downloaded from GitHub${NC}"
-    elif curl -fsSL "$ALT_URL" -o "$TMP_FILE" 2>/dev/null; then
-        echo "${GREEN}Downloaded from klaw.sh${NC}"
     else
         echo "${RED}Failed to download klaw${NC}"
         echo ""
