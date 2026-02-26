@@ -122,12 +122,7 @@ func runCreateAgent(cmd *cobra.Command, args []string) error {
 
 		cfg, err := config.Load()
 		if err == nil {
-			apiKey := os.Getenv("ANTHROPIC_API_KEY")
-			if apiKey == "" {
-				if p, ok := cfg.Provider["anthropic"]; ok {
-					apiKey = p.APIKey
-				}
-			}
+			apiKey := cfg.Provider["anthropic"].APIKey
 
 			if apiKey != "" {
 				prov, err := provider.NewAnthropic(provider.AnthropicConfig{
@@ -356,17 +351,13 @@ func runWorker(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Task: %s\n", workerTask)
 	fmt.Println("---")
 
-	// Get API key from environment
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return fmt.Errorf("ANTHROPIC_API_KEY not set")
+	// Load config and initialize provider
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Create provider
-	prov, err := provider.NewAnthropic(provider.AnthropicConfig{
-		APIKey: apiKey,
-		Model:  workerModel,
-	})
+	prov, err := initializeProvider(cfg, workerModel)
 	if err != nil {
 		return fmt.Errorf("failed to create provider: %w", err)
 	}

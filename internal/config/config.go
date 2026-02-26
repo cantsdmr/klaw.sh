@@ -48,9 +48,10 @@ type ProviderConfig struct {
 
 // ChannelConfig holds channel settings.
 type ChannelConfig struct {
-	Enabled bool   `toml:"enabled"`
-	Token   string `toml:"token"`
-	GuildID string `toml:"guild_id"` // Discord
+	Enabled  bool   `toml:"enabled"`
+	Token    string `toml:"token"`
+	AppToken string `toml:"app_token"` // Slack app-level token (xapp-...)
+	GuildID  string `toml:"guild_id"`  // Discord
 }
 
 // ServerConfig holds server settings.
@@ -162,6 +163,20 @@ func (c *Config) applyEnv() {
 		c.Provider["openai"] = p
 	}
 
+	// OpenRouter
+	if key := os.Getenv("OPENROUTER_API_KEY"); key != "" {
+		p := c.Provider["openrouter"]
+		p.APIKey = key
+		c.Provider["openrouter"] = p
+	}
+
+	// EachLabs
+	if key := os.Getenv("EACHLABS_API_KEY"); key != "" {
+		p := c.Provider["eachlabs"]
+		p.APIKey = key
+		c.Provider["eachlabs"] = p
+	}
+
 	// Telegram
 	if token := os.Getenv("TELEGRAM_BOT_TOKEN"); token != "" {
 		ch := c.Channel["telegram"]
@@ -176,6 +191,19 @@ func (c *Config) applyEnv() {
 		ch.Token = token
 		ch.Enabled = true
 		c.Channel["discord"] = ch
+	}
+
+	// Slack
+	if token := os.Getenv("SLACK_BOT_TOKEN"); token != "" {
+		ch := c.Channel["slack"]
+		ch.Token = token
+		ch.Enabled = true
+		c.Channel["slack"] = ch
+	}
+	if token := os.Getenv("SLACK_APP_TOKEN"); token != "" {
+		ch := c.Channel["slack"]
+		ch.AppToken = token
+		c.Channel["slack"] = ch
 	}
 
 	// Model override

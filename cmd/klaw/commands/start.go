@@ -15,7 +15,6 @@ import (
 	"github.com/eachlabs/klaw/internal/cluster"
 	"github.com/eachlabs/klaw/internal/config"
 	"github.com/eachlabs/klaw/internal/memory"
-	"github.com/eachlabs/klaw/internal/provider"
 	"github.com/eachlabs/klaw/internal/scheduler"
 	"github.com/eachlabs/klaw/internal/skill"
 	"github.com/eachlabs/klaw/internal/tool"
@@ -61,103 +60,24 @@ func runStart(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get Slack tokens
-	botToken := os.Getenv("SLACK_BOT_TOKEN")
-	appToken := os.Getenv("SLACK_APP_TOKEN")
+	botToken := cfg.Channel["slack"].Token
+	appToken := cfg.Channel["slack"].AppToken
 
 	if botToken == "" || appToken == "" {
 		fmt.Println("ERROR: Slack tokens not set")
 		fmt.Println("")
-		fmt.Println("Set environment variables:")
+		fmt.Println("Set environment variables or config:")
 		fmt.Println("  export SLACK_BOT_TOKEN=xoxb-...")
 		fmt.Println("  export SLACK_APP_TOKEN=xapp-...")
 		return fmt.Errorf("Slack tokens required")
 	}
 
-	// Determine provider
-	var prov provider.Provider
-	providerName := startProvider
-
-	if providerName == "" {
-		if os.Getenv("OPENROUTER_API_KEY") != "" {
-			providerName = "openrouter"
-		} else if os.Getenv("EACHLABS_API_KEY") != "" {
-			providerName = "eachlabs"
-		} else if os.Getenv("ANTHROPIC_API_KEY") != "" {
-			providerName = "anthropic"
-		} else {
-			providerName = "anthropic"
-		}
+	// Resolve provider and model
+	prov, model, err := buildProvider(cfg, startProvider, startModel)
+	if err != nil {
+		return err
 	}
-
-	// Determine model
-	model := startModel
-	if model == "" {
-		if provCfg, ok := cfg.Provider[providerName]; ok && provCfg.Model != "" {
-			model = provCfg.Model
-		}
-	}
-	if model == "" {
-		switch providerName {
-		case "openrouter":
-			model = "anthropic/claude-sonnet-4"
-		case "eachlabs":
-			model = "anthropic/claude-sonnet-4-5"
-		default:
-			model = "claude-sonnet-4-20250514"
-		}
-	}
-
-	// Create provider
-	switch providerName {
-	case "openrouter":
-		apiKey := os.Getenv("OPENROUTER_API_KEY")
-		if apiKey == "" {
-			return fmt.Errorf("OPENROUTER_API_KEY not set")
-		}
-		prov, err = provider.NewOpenRouter(provider.OpenRouterConfig{
-			APIKey: apiKey,
-			Model:  model,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create openrouter provider: %w", err)
-		}
-
-	case "eachlabs":
-		apiKey := os.Getenv("EACHLABS_API_KEY")
-		if apiKey == "" {
-			if eachCfg, ok := cfg.Provider["eachlabs"]; ok {
-				apiKey = eachCfg.APIKey
-			}
-		}
-		if apiKey == "" {
-			return fmt.Errorf("EACHLABS_API_KEY not set")
-		}
-		prov, err = provider.NewEachLabs(provider.EachLabsConfig{
-			APIKey: apiKey,
-			Model:  model,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create eachlabs provider: %w", err)
-		}
-
-	default: // anthropic
-		apiKey := os.Getenv("ANTHROPIC_API_KEY")
-		if apiKey == "" {
-			if anthropicCfg, ok := cfg.Provider["anthropic"]; ok {
-				apiKey = anthropicCfg.APIKey
-			}
-		}
-		if apiKey == "" {
-			return fmt.Errorf("ANTHROPIC_API_KEY not set")
-		}
-		prov, err = provider.NewAnthropic(provider.AnthropicConfig{
-			APIKey: apiKey,
-			Model:  model,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create provider: %w", err)
-		}
-	}
+	providerName := prov.Name()
 
 	// Get context
 	ctxMgr := cluster.NewContextManager(config.ConfigDir())

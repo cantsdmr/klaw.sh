@@ -11,7 +11,6 @@ import (
 	"github.com/eachlabs/klaw/internal/cluster"
 	"github.com/eachlabs/klaw/internal/config"
 	"github.com/eachlabs/klaw/internal/node"
-	"github.com/eachlabs/klaw/internal/provider"
 	"github.com/eachlabs/klaw/internal/tool"
 	"github.com/spf13/cobra"
 )
@@ -287,86 +286,3 @@ func runNodeLeave(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// initializeProvider selects and initializes the appropriate LLM provider based on
-// configuration and environment variables. It tries providers in order of preference:
-// 1. OpenRouter (most flexible, supports multiple models)
-// 2. Anthropic (direct Claude API access)
-//
-// For each provider, it checks:
-// - Environment variable (e.g., OPENROUTER_API_KEY)
-// - Configuration file (cfg.Provider map)
-//
-// Returns the first successfully initialized provider or an error if none are available.
-func initializeProvider(cfg *config.Config, model string) (provider.Provider, error) {
-	// Try OpenRouter
-	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
-	if openRouterKey == "" {
-		if p, ok := cfg.Provider["openrouter"]; ok {
-			openRouterKey = p.APIKey
-		}
-	}
-
-	if openRouterKey != "" {
-		var baseURL string
-		if p, ok := cfg.Provider["openrouter"]; ok {
-			baseURL = p.BaseURL
-		}
-
-		prov, err := provider.NewOpenRouter(provider.OpenRouterConfig{
-			APIKey:  openRouterKey,
-			BaseURL: baseURL,
-			Model:   model,
-		})
-		if err == nil {
-			return prov, nil
-		}
-		// If OpenRouter initialization failed, continue to try other providers
-	}
-
-	// Try Anthropic
-	anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
-	if anthropicKey == "" {
-		if p, ok := cfg.Provider["anthropic"]; ok {
-			anthropicKey = p.APIKey
-		}
-	}
-
-	if anthropicKey != "" {
-		var baseURL string
-		if p, ok := cfg.Provider["anthropic"]; ok {
-			baseURL = p.BaseURL
-		}
-
-		prov, err := provider.NewAnthropic(provider.AnthropicConfig{
-			APIKey:  anthropicKey,
-			BaseURL: baseURL,
-			Model:   model,
-		})
-		if err == nil {
-			return prov, nil
-		}
-		// If Anthropic initialization failed, return error
-		return nil, fmt.Errorf("failed to initialize Anthropic provider: %w", err)
-	}
-
-	// No provider available
-	return nil, fmt.Errorf(`no LLM provider configured
-
-Please set one of the following:
-  - OPENROUTER_API_KEY environment variable
-  - ANTHROPIC_API_KEY environment variable
-  - Provider configuration in klaw.toml
-
-Example klaw.toml configuration:
-
-    [provider.openrouter]
-    api_key = "sk-or-v1-..."
-    model = "google/gemini-2.0-flash-001"
-
-    OR
-
-    [provider.anthropic]
-    api_key = "sk-ant-..."
-    model = "claude-sonnet-4-20250514"
-`)
-}

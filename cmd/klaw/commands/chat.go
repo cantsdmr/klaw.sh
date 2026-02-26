@@ -64,116 +64,12 @@ func runChat(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
 
-	// Determine provider and create it
-	var prov provider.Provider
-	providerName := chatProvider
-
-	// Auto-detect provider based on available API keys
-	if providerName == "" {
-		if os.Getenv("OPENROUTER_API_KEY") != "" {
-			providerName = "openrouter"
-		} else if os.Getenv("EACHLABS_API_KEY") != "" {
-			providerName = "eachlabs"
-		} else if os.Getenv("ANTHROPIC_API_KEY") != "" {
-			providerName = "anthropic"
-		} else if cfg.Provider["eachlabs"].APIKey != "" {
-			providerName = "eachlabs"
-		} else if cfg.Provider["anthropic"].APIKey != "" {
-			providerName = "anthropic"
-		} else {
-			providerName = "anthropic" // default
-		}
+	// Resolve provider and model
+	prov, model, err := buildProvider(cfg, chatProvider, chatModel)
+	if err != nil {
+		return err
 	}
-
-	// Determine model
-	model := chatModel
-	if model == "" {
-		if provCfg, ok := cfg.Provider[providerName]; ok && provCfg.Model != "" {
-			model = provCfg.Model
-		}
-	}
-	if model == "" {
-		// Default model based on provider
-		switch providerName {
-		case "openrouter":
-			model = "anthropic/claude-sonnet-4"
-		case "eachlabs":
-			model = "anthropic/claude-sonnet-4-5"
-		default:
-			model = cfg.Defaults.Model
-			if model == "" {
-				model = "claude-sonnet-4-20250514"
-			}
-		}
-	}
-
-	switch providerName {
-	case "openrouter":
-		apiKey := os.Getenv("OPENROUTER_API_KEY")
-		if apiKey == "" {
-			fmt.Println("ERROR: OPENROUTER_API_KEY not set")
-			fmt.Println("")
-			fmt.Println("Get your API key at: https://openrouter.ai")
-			return fmt.Errorf("OpenRouter API key required")
-		}
-		var err error
-		prov, err = provider.NewOpenRouter(provider.OpenRouterConfig{
-			APIKey: apiKey,
-			Model:  model,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create openrouter provider: %w", err)
-		}
-		fmt.Printf("Using OpenRouter (model: %s)\n", model)
-
-	case "eachlabs":
-		apiKey := os.Getenv("EACHLABS_API_KEY")
-		if apiKey == "" {
-			if eachCfg, ok := cfg.Provider["eachlabs"]; ok {
-				apiKey = eachCfg.APIKey
-			}
-		}
-		if apiKey == "" {
-			fmt.Println("ERROR: EACHLABS_API_KEY not set")
-			fmt.Println("")
-			fmt.Println("Set it via environment variable:")
-			fmt.Println("  export EACHLABS_API_KEY=your-api-key")
-			fmt.Println("")
-			fmt.Println("Get your API key at: https://eachlabs.ai")
-			return fmt.Errorf("each::labs API key required")
-		}
-		var err error
-		prov, err = provider.NewEachLabs(provider.EachLabsConfig{
-			APIKey: apiKey,
-			Model:  model,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create eachlabs provider: %w", err)
-		}
-
-	default: // anthropic
-		apiKey := os.Getenv("ANTHROPIC_API_KEY")
-		if apiKey == "" {
-			if anthropicCfg, ok := cfg.Provider["anthropic"]; ok {
-				apiKey = anthropicCfg.APIKey
-			}
-		}
-		if apiKey == "" {
-			fmt.Println("ERROR: ANTHROPIC_API_KEY not set")
-			fmt.Println("")
-			fmt.Println("Set it via environment variable:")
-			fmt.Println("  export ANTHROPIC_API_KEY=sk-ant-api03-...")
-			return fmt.Errorf("API key required")
-		}
-		var err error
-		prov, err = provider.NewAnthropic(provider.AnthropicConfig{
-			APIKey: apiKey,
-			Model:  model,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create provider: %w", err)
-		}
-	}
+	providerName := prov.Name()
 
 	// Get working directory
 	workDir, err := os.Getwd()
