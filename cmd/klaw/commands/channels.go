@@ -12,7 +12,6 @@ import (
 	"github.com/eachlabs/klaw/internal/cluster"
 	"github.com/eachlabs/klaw/internal/config"
 	"github.com/eachlabs/klaw/internal/memory"
-	"github.com/eachlabs/klaw/internal/provider"
 	"github.com/eachlabs/klaw/internal/tool"
 	"github.com/spf13/cobra"
 )
@@ -63,24 +62,8 @@ func runChannelBot(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Get API key
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		anthropicCfg := cfg.Provider["anthropic"]
-		apiKey = anthropicCfg.APIKey
-	}
-
-	if apiKey == "" {
-		return fmt.Errorf("ANTHROPIC_API_KEY not set")
-	}
-
 	// Determine model
 	model := runChannelModel
-	if model == "" {
-		if anthropicCfg, ok := cfg.Provider["anthropic"]; ok && anthropicCfg.Model != "" {
-			model = anthropicCfg.Model
-		}
-	}
 	if model == "" {
 		model = cfg.Defaults.Model
 	}
@@ -89,10 +72,7 @@ func runChannelBot(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create provider
-	prov, err := provider.NewAnthropic(provider.AnthropicConfig{
-		APIKey: apiKey,
-		Model:  model,
-	})
+	prov, err := initializeProvider(cfg, model)
 	if err != nil {
 		return fmt.Errorf("failed to create provider: %w", err)
 	}
