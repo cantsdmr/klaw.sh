@@ -26,7 +26,7 @@ type EachLabsConfig struct {
 // NewEachLabs creates a new each::labs provider.
 func NewEachLabs(cfg EachLabsConfig) (*EachLabsProvider, error) {
 	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("EACHLABS_API_KEY is required")
+		return nil, fmt.Errorf("eachlabs api key is required")
 	}
 
 	baseURL := cfg.BaseURL

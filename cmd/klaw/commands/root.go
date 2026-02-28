@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -27,6 +28,12 @@ kubectl-style commands for AI:
 }
 
 func init() {
+	cobra.OnInitialize(func() {
+		if cfgFile != "" {
+			os.Setenv("KLAW_CONFIG", cfgFile)
+		}
+	})
+
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: ~/.klaw/config.toml)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "output as JSON")

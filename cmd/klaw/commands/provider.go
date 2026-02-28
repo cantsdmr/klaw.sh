@@ -8,12 +8,25 @@ import (
 )
 
 // initializeProvider selects and initializes the appropriate LLM provider by
-// trying providers in order of preference: OpenRouter, then Anthropic.
+// trying providers in order of preference: OpenRouter, EachLabs, then Anthropic.
+// API keys are sourced from the config file or environment variables (via config.Load).
 // Used by commands that don't expose a --provider flag (e.g. node start).
 func initializeProvider(cfg *config.Config, model string) (provider.Provider, error) {
 	// Try OpenRouter
 	if p := cfg.Provider["openrouter"]; p.APIKey != "" {
 		prov, err := provider.NewOpenRouter(provider.OpenRouterConfig{
+			APIKey:  p.APIKey,
+			BaseURL: p.BaseURL,
+			Model:   model,
+		})
+		if err == nil {
+			return prov, nil
+		}
+	}
+
+	// Try EachLabs
+	if p := cfg.Provider["eachlabs"]; p.APIKey != "" {
+		prov, err := provider.NewEachLabs(provider.EachLabsConfig{
 			APIKey:  p.APIKey,
 			BaseURL: p.BaseURL,
 			Model:   model,
@@ -38,22 +51,21 @@ func initializeProvider(cfg *config.Config, model string) (provider.Provider, er
 
 	return nil, fmt.Errorf(`no LLM provider configured
 
-Please set one of the following:
-  - OPENROUTER_API_KEY environment variable
-  - ANTHROPIC_API_KEY environment variable
-  - Provider configuration in klaw.toml
-
-Example klaw.toml configuration:
+Set an api_key in your klaw.toml config file or via environment variables:
 
     [provider.openrouter]
     api_key = "sk-or-v1-..."
     model = "google/gemini-2.0-flash-001"
 
-    OR
+    [provider.eachlabs]
+    api_key = "ea-..."
+    model = "anthropic/claude-sonnet-4-5"
 
     [provider.anthropic]
     api_key = "sk-ant-..."
     model = "claude-sonnet-4-20250514"
+
+Environment variable equivalents: OPENROUTER_API_KEY, EACHLABS_API_KEY, ANTHROPIC_API_KEY
 `)
 }
 
