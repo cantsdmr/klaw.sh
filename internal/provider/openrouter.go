@@ -32,7 +32,7 @@ type OpenRouterConfig struct {
 // NewOpenRouter creates a new OpenRouter provider.
 func NewOpenRouter(cfg OpenRouterConfig) (*OpenRouterProvider, error) {
 	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("OPENROUTER_API_KEY is required")
+		return nil, fmt.Errorf("openrouter api key is required")
 	}
 
 	baseURL := cfg.BaseURL
